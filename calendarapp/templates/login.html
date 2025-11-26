@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login - Company Calendar</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
+        .login-container { max-width: 400px; margin: 100px auto; padding: 30px; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { background: #007bff; color: white; padding: 12px 20px; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; }
+        button:hover { background: #0056b3; }
+        .error { color: #dc3545; margin-bottom: 15px; padding: 10px; background: #f8d7da; border-radius: 4px; }
+        .register-link { text-align: center; margin-top: 20px; }
+        .back-link { display: block; text-align: center; margin-top: 15px; color: #007bff; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h2 style="text-align: center; margin-bottom: 30px;">Login to Company Calendar</h2>
+        
+        {% if form.errors %}
+        <div class="error">
+            Invalid username or password. Please try again.
+        </div>
+        {% endif %}
+        
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="id_username">Username:</label>
+                <input type="text" name="username" id="id_username" required autofocus>
+            </div>
+            <div class="form-group">
+                <label for="id_password">Password:</label>
+                <input type="password" name="password" id="id_password" required>
+            </div>
+            <button type="submit">Login</button>
+        </form>
+        
+        <div class="register-link">
+            <p>Don't have an account? Contact admin to create one.</p>
+        </div>
+        
+        <a href="{% url 'calendar_view' %}" class="back-link">Back to Calendar</a>
+    </div>
+</body>
+</html>

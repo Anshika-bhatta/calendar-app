@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Company Calendar</title>
+    <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
+    <style>
+        .event-card { border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .future-event { background-color: #e8f5e8; border-left: 4px solid #28a745; }
+        .past-event { background-color: #f9f9f9; opacity: 0.7; border-left: 4px solid #6c757d; }
+        .btn { padding: 8px 15px; text-decoration: none; border-radius: 4px; display: inline-block; margin: 5px; border: none; cursor: pointer; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-info { background: #17a2b8; color: white; }
+        .btn-warning { background: #ffc107; color: black; }
+        .btn-danger { background: #dc3545; color: white; }
+        .view-options { margin: 20px 0; padding: 10px; background: #f8f9fa; border-radius: 5px; }
+        .category-badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 12px; margin-left: 10px; color: white; }
+        .calendar-container { margin: 20px 0; }
+        #calendar { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .export-options { margin: 10px 0; }
+        .export-btn { background: #28a745; color: white; padding: 5px 10px; text-decoration: none; border-radius: 3px; font-size: 12px; margin-left: 10px; }
+        .user-info { float: right; margin: 10px; }
+        
+        /* Table Styles */
+        .events-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        .events-table th, .events-table td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        .events-table th { background-color: #f8f9fa; font-weight: bold; }
+        .events-table tr:hover { background-color: #f5f5f5; }
+        .upcoming-section { margin-bottom: 40px; }
+        .past-section { margin-top: 40px; }
+        .table-actions { display: flex; gap: 5px; }
+        .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .status-upcoming { background-color: #d4edda; color: #155724; }
+        .status-past { background-color: #f8d7da; color: #721c24; }
+        .no-events { text-align: center; padding: 20px; color: #6c757d; font-style: italic; }
+        
+        /* Custom Hover Styles */
+        .fc-daygrid-day:hover {
+            background-color: #17a2b8!important;
+            cursor: pointer;
+        }
+        
+        .fc-event:hover {
+            transform: scale(1.02);
+            transition: transform 0.2s ease;
+            z-index: 1000;
+        }
+        
+        /* Custom Tooltip */
+        .custom-tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 12px;
+            z-index: 10000;
+            max-width: 300px;
+            pointer-events: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        
+        .custom-tooltip h4 {
+            margin: 0 0 8px 0;
+            font-size: 14px;
+            font-weight: bold;
+            color: #fff;
+        }
+        
+        .custom-tooltip p {
+            margin: 4px 0;
+            font-size: 11px;
+            color: #f0f0f0;
+        }
+        
+        .custom-tooltip strong {
+            color: #fff;
+        }
+        
+        /* Event styling improvements */
+        .fc-event {
+            border: 1px solid #fff;
+            border-radius: 4px;
+            font-size: 11px;
+            padding: 2px 4px;
+            cursor: pointer;
+        }
+        
+        .fc-event-title {
+            font-weight: bold;
+        }
+        
+        .fc-event-time {
+            font-size: 10px;
+            opacity: 0.9;
+        }
+        
+        /* Enhanced calendar styling */
+        .fc .fc-daygrid-day-frame {
+            min-height: 80px;
+        }
+        
+        .fc .fc-daygrid-day-events {
+            min-height: 20px;
+        }
+        
+        .fc-event {
+            cursor: pointer;
+            border-left: 3px solid rgba(255,255,255,0.8) !important;
+        }
+        
+        .fc-day-today {
+            background-color: #e8f4fd !important;
+        }
+        
+        /* Ensure events stay within their day */
+        .fc-daygrid-event {
+            max-width: 100%;
+            overflow: hidden;
+        }
+        
+        .fc-event-main {
+            padding: 1px 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="user-info">
+        {% if user.is_authenticated %}
+            Welcome, {{ user.username }}! 
+            {% if user.is_staff %}(Admin){% endif %}
+            <a href="{% url 'logout' %}" class="btn btn-danger">Logout</a>
+        {% else %}
+            <a href="{% url 'login' %}" class="btn btn-primary">Login</a>
+        {% endif %}
+    </div>
+
+    <h1>Company Events Calendar</h1>
+    
+    <div class="view-options">
+        <a href="?view=grid" class="btn btn-primary">Grid View</a>
+        <a href="?view=list" class="btn btn-info">List View</a>
+        
+        {% if user.is_authenticated %}
+        <a href="{% url 'add_event' %}" class="btn btn-success">Add New Event</a>
+        {% endif %}
+        
+        {% if user.is_staff %}
+        <a href="{% url 'manage_categories' %}" class="btn btn-warning">Manage Categories</a>
+        {% endif %}
+    </div>
+
+    {% if view_type == 'grid' %}
+    <!-- Grid Calendar View -->
+    <div class="calendar-container">
+        <div id="calendar"></div>
+    </div>
+    {% else %}
+    <!-- List View - Table Structure -->
+    <div class="upcoming-section">
+        <h2>📅 Upcoming Events</h2>
+        {% if future_events %}
+        <table class="events-table">
+            <thead>
+                <tr>
+                    <th>Event Title</th>
+                    <th>Category</th>
+                    <th>Start Date & Time</th>
+                    <th>End Date & Time</th>
+                    <th>Location</th>
+                    <th>Created By</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in future_events %}
+                <tr>
+                    <td>
+                        <strong>{{ event.title }}</strong>
+                        {% if event.description %}
+                        <br><small style="color: #666;">{{ event.description|truncatewords:10 }}</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if event.category %}
+                        <span class="category-badge" style="background-color: {{ event.category.color }};">
+                            {{ event.category.name }}
+                        </span>
+                        {% else %}
+                        <span style="color: #6c757d;">Uncategorized</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ event.start_date|date:"M d, Y H:i" }}</td>
+                    <td>{{ event.end_date|date:"M d, Y H:i" }}</td>
+                    <td>
+                        {% if event.location %}
+                            {{ event.location }}
+                        {% else %}
+                            <span style="color: #6c757d;">Not specified</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ event.created_by.username }}</td>
+                    <td>
+                        <span class="status-badge status-upcoming">Upcoming</span>
+                    </td>
+                    <td>
+                        <div class="table-actions">
+                            <a href="{{ event.to_google_calendar_url }}" target="_blank" class="export-btn" title="Add to Google Calendar">📅</a>
+                            <a href="{% url 'export_event_ical' event.id %}" class="export-btn" title="Download iCal">📥</a>
+                            {% if user.is_authenticated and user == event.created_by or user.is_staff %}
+                            <a href="{% url 'edit_event' event.id %}" class="btn btn-primary" style="padding: 4px 8px; font-size: 12px;">Edit</a>
+                            {% endif %}
+                            {% if user.is_staff %}
+                            <a href="{% url 'delete_event' event.id %}" class="btn btn-danger" style="padding: 4px 8px; font-size: 12px;"
+                               onclick="return confirm('Are you sure you want to delete this event?')">Delete</a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="no-events">
+            <p>No upcoming events scheduled.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="past-section">
+        <h2>📋 Past Events</h2>
+        {% if past_events %}
+        <table class="events-table">
+            <thead>
+                <tr>
+                    <th>Event Title</th>
+                    <th>Category</th>
+                    <th>Start Date & Time</th>
+                    <th>End Date & Time</th>
+                    <th>Location</th>
+                    <th>Created By</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in past_events %}
+                <tr>
+                    <td>
+                        <strong>{{ event.title }}</strong>
+                        {% if event.description %}
+                        <br><small style="color: #666;">{{ event.description|truncatewords:10 }}</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if event.category %}
+                        <span class="category-badge" style="background-color: {{ event.category.color }};">
+                            {{ event.category.name }}
+                        </span>
+                        {% else %}
+                        <span style="color: #6c757d;">Uncategorized</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ event.start_date|date:"M d, Y H:i" }}</td>
+                    <td>{{ event.end_date|date:"M d, Y H:i" }}</td>
+                    <td>
+                        {% if event.location %}
+                            {{ event.location }}
+                        {% else %}
+                            <span style="color: #6c757d;">Not specified</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ event.created_by.username }}</td>
+                    <td>
+                        <span class="status-badge status-past">Past</span>
+                    </td>
+                    <td>
+                        <div class="table-actions">
+                            <a href="{% url 'export_event_ical' event.id %}" class="export-btn" title="Download iCal">📥</a>
+                            {% if user.is_staff %}
+                            <a href="{% url 'delete_event' event.id %}" class="btn btn-danger" style="padding: 4px 8px; font-size: 12px;"
+                               onclick="return confirm('Are you sure you want to delete this event?')">Delete</a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="no-events">
+            <p>No past events found.</p>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var calendarEl = document.getElementById('calendar');
+            if (calendarEl) {
+                var calendar = new FullCalendar.Calendar(calendarEl, {
+                    initialView: 'dayGridMonth',
+                    headerToolbar: {
+                        left: 'prev,next today',
+                        center: 'title',
+                        right: 'dayGridMonth,timeGridWeek,timeGridDay,listMonth'
+                    },
+                    events: '{% url "calendar_events_json" %}',
+                    
+                    // Event display improvements
+                    eventDisplay: 'block',
+                    eventTimeFormat: {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                    },
+                    
+                    // Hover effects and tooltips
+                    eventDidMount: function(info) {
+                        // Add custom hover tooltip
+                        const eventElement = info.el;
+                        
+                        // Create tooltip content
+                        const tooltipContent = `
+                            <div>
+                                <h4>${info.event.title}</h4>
+                                <p><strong>Time:</strong> ${info.event.start ? info.event.start.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''} 
+                                ${info.event.end ? ' - ' + info.event.end.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}</p>
+                                ${info.event.extendedProps.description ? `<p><strong>Description:</strong> ${info.event.extendedProps.description}</p>` : ''}
+                                ${info.event.extendedProps.location ? `<p><strong>Location:</strong> ${info.event.extendedProps.location}</p>` : ''}
+                                <p><strong>Category:</strong> ${info.event.extendedProps.category || 'Uncategorized'}</p>
+                            </div>
+                        `;
+                        
+                        // Add hover event for tooltip
+                        eventElement.addEventListener('mouseenter', function(e) {
+                            // Remove any existing tooltip
+                            document.querySelectorAll('.custom-tooltip').forEach(tooltip => tooltip.remove());
+                            
+                            // Create new tooltip
+                            const tooltip = document.createElement('div');
+                            tooltip.className = 'custom-tooltip';
+                            tooltip.innerHTML = tooltipContent;
+                            
+                            // Position tooltip near cursor
+                            tooltip.style.left = (e.pageX + 10) + 'px';
+                            tooltip.style.top = (e.pageY + 10) + 'px';
+                            
+                            document.body.appendChild(tooltip);
+                        });
+                        
+                        eventElement.addEventListener('mouseleave', function() {
+                            // Remove tooltip when mouse leaves
+                            document.querySelectorAll('.custom-tooltip').forEach(tooltip => tooltip.remove());
+                        });
+                        
+                        eventElement.addEventListener('mousemove', function(e) {
+                            // Update tooltip position when mouse moves
+                            const tooltip = document.querySelector('.custom-tooltip');
+                            if (tooltip) {
+                                tooltip.style.left = (e.pageX + 10) + 'px';
+                                tooltip.style.top = (e.pageY + 10) + 'px';
+                            }
+                        });
+                    },
+                    
+                    // Date cell hover effects
+                    dayCellDidMount: function(info) {
+                        const dateCell = info.el;
+                        
+                        dateCell.addEventListener('mouseenter', function() {
+                            dateCell.style.backgroundColor = '#b3d9ff';
+                            dateCell.style.transition = 'background-color 0.3s ease';
+                        });
+                        
+                        dateCell.addEventListener('mouseleave', function() {
+                            dateCell.style.backgroundColor = '';
+                        });
+                    },
+                    
+                    // Click event handling
+                    eventClick: function(info) {
+                        if (info.event.extendedProps.url) {
+                            window.open(info.event.extendedProps.url, '_self');
+                            info.jsEvent.preventDefault();
+                        }
+                    },
+                    
+                    // Better event rendering
+                    allDaySlot: false,
+                    displayEventTime: true,
+                    displayEventEnd: true,
+                    eventShortHeight: 25,
+                    
+                    // Force single-day events to stay on their day
+                    eventRender: function(info) {
+                        // Ensure events don't span incorrectly
+                        const start = info.event.start;
+                        const end = info.event.end;
+                        
+                        if (start && end) {
+                            const startDate = new Date(start);
+                            const endDate = new Date(end);
+                            
+                            // If it's a single day event, adjust display
+                            if (startDate.toDateString() === endDate.toDateString()) {
+                                // Single day event - ensure it stays on one day
+                                info.el.style.width = '95%';
+                                info.el.style.margin = '1px auto';
+                            }
+                        }
+                    }
+                });
+                calendar.render();
+            }
+        });
+    </script>
+</body>
+</html>

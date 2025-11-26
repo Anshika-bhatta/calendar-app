@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Event</title>
+    <style>
+        form { max-width: 500px; margin: 20px 0; }
+        label { display: block; margin: 10px 0 5px; }
+        input, textarea { width: 100%; padding: 8px; margin-bottom: 10px; }
+        button { background: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+        .back-link { display: inline-block; margin-top: 10px; color: #007bff; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <h1>Edit Event</h1>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Update Event</button>
+    </form>
+    <a href="{% url 'calendar_view' %}" class="back-link">Back to Calendar</a>
+</body>
+</html>
